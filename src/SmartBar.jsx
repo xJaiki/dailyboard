@@ -1,8 +1,21 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { parseSmartInput } from './lib/parseSmartInput.js'
 import { api } from './lib/api.js'
 
 const TOKEN_RE = /(^|\s)([@[])([\w-]*)$/
+
+// Known assignees/categories survive an emptied DB: union of current tasks and what localStorage remembers.
+function knownValues(tasks, key, pick) {
+  let stored = []
+  try {
+    stored = JSON.parse(localStorage.getItem(key)) ?? []
+  } catch {
+    /* corrupt entry: start over */
+  }
+  const all = [...new Set([...stored, ...tasks.flatMap(pick).filter(Boolean)])]
+  if (all.length > stored.length) localStorage.setItem(key, JSON.stringify(all))
+  return all
+}
 
 function getSuggestions(value, target, tasks) {
   if (target) return { kind: null, items: [] }
@@ -14,10 +27,10 @@ function getSuggestions(value, target, tasks) {
   if (!m) return { kind: null, items: [] }
   const q = m[3].toLowerCase()
   if (m[2] === '@') {
-    const names = [...new Set(tasks.map((t) => t.assignee).filter(Boolean))]
+    const names = knownValues(tasks, 'knownAssignees', (t) => [t.assignee, ...t.notes.map((n) => n.assignee)])
     return { kind: 'assignee', items: names.filter((n) => n.startsWith(q) && n !== q) }
   }
-  const cats = [...new Set(tasks.map((t) => t.category).filter(Boolean))]
+  const cats = knownValues(tasks, 'knownCategories', (t) => [t.category, ...t.notes.map((n) => n.category)])
   return { kind: 'category', items: cats.filter((c) => c.toLowerCase().startsWith(q) && c.toLowerCase() !== q) }
 }
 
@@ -31,6 +44,16 @@ export default function SmartBar({ tasks, onTaskSaved, onError, inputRef }) {
   const { kind, items } = getSuggestions(value, target, tasks)
   const open = items.length > 0 && !dismissed
   const active = open ? Math.min(highlight, items.length - 1) : 0
+
+  // Live preview of what the smart syntax will produce, before Enter.
+  const preview = !target && !value.startsWith('>') ? parseSmartInput(value) : null
+  const previewChips = preview
+    ? [
+        preview.category && ['categoria', preview.category],
+        preview.assignee && ['assignee', `@${preview.assignee}`],
+        preview.sprint && ['sprint', `#${preview.sprint}`],
+      ].filter(Boolean)
+    : []
 
   function applySuggestion(item) {
     if (kind === 'task') {
@@ -50,8 +73,9 @@ export default function SmartBar({ tasks, onTaskSaved, onError, inputRef }) {
     busyRef.current = true
     try {
       if (target) {
-        if (!text) return
-        onTaskSaved(await api(`/api/tasks/${target.id}/notes`, 'POST', { content: text }))
+        const parsed = parseSmartInput(text)
+        if (!parsed.title) return
+        onTaskSaved(await api(`/api/tasks/${target.id}/notes`, 'POST', { content: parsed.title, category: parsed.category, assignee: parsed.assignee }))
         setTarget(null)
       } else {
         const parsed = parseSmartInput(text)
@@ -109,6 +133,15 @@ export default function SmartBar({ tasks, onTaskSaved, onError, inputRef }) {
         aria-label={target ? `Nota per ${target.title}` : 'Nuovo task'}
         autoFocus
       />
+      {previewChips.length > 0 && (
+        <div className="parse-preview" aria-hidden="true">
+          {previewChips.map(([label, val]) => (
+            <span key={label} className="parse-chip">
+              <span className="parse-chip-label">{label}</span> {val}
+            </span>
+          ))}
+        </div>
+      )}
       {open && (
         <ul className="suggestions" id="smartbar-suggestions" role="listbox">
           {items.map((item, i) => (

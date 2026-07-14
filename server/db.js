@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const dbPath = process.env.DB_PATH || path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dailyboard.db')
 export const db = new Database(dbPath)
+db.pragma('foreign_keys = ON')
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS tasks (
@@ -14,7 +15,10 @@ db.exec(`
     sprint TEXT,
     progress_percent INTEGER DEFAULT 0,
     is_completed BOOLEAN DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    archived BOOLEAN DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    completed_at DATETIME
   );
 
   CREATE TABLE IF NOT EXISTS daily_notes (
@@ -25,20 +29,53 @@ db.exec(`
 
   CREATE TABLE IF NOT EXISTS task_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    task_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
     content TEXT NOT NULL,
+    category TEXT,
+    assignee TEXT,
     is_completed BOOLEAN DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `)
 
-// Migration for DBs created before task_notes had a state column.
-if (!db.prepare('PRAGMA table_info(task_notes)').all().some((c) => c.name === 'is_completed')) {
-  db.exec('ALTER TABLE task_notes ADD COLUMN is_completed BOOLEAN DEFAULT 0')
+// Additive migrations for DBs created before these columns existed.
+function addColumn(table, column, ddl) {
+  if (!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`)
+  }
+}
+addColumn('task_notes', 'is_completed', 'BOOLEAN DEFAULT 0')
+addColumn('tasks', 'archived', 'BOOLEAN DEFAULT 0')
+addColumn('tasks', 'updated_at', 'DATETIME')
+addColumn('tasks', 'completed_at', 'DATETIME')
+
+// Old DBs have task_notes without the FK: SQLite can't ALTER-add one, so rebuild the table (dropping any orphans).
+if (db.prepare('PRAGMA foreign_key_list(task_notes)').all().length === 0) {
+  db.transaction(() => {
+    db.exec(`
+      DELETE FROM task_notes WHERE task_id NOT IN (SELECT id FROM tasks);
+      CREATE TABLE task_notes_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        is_completed BOOLEAN DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      INSERT INTO task_notes_new SELECT id, task_id, content, is_completed, created_at FROM task_notes;
+      DROP TABLE task_notes;
+      ALTER TABLE task_notes_new RENAME TO task_notes;
+    `)
+  })()
 }
 
-export function getTasks() {
-  const tasks = db.prepare('SELECT * FROM tasks ORDER BY created_at DESC, id DESC').all()
+// After the FK rebuild (which copies the pre-meta schema) so the columns survive on every migration path.
+addColumn('task_notes', 'category', 'TEXT')
+addColumn('task_notes', 'assignee', 'TEXT')
+
+db.exec('CREATE INDEX IF NOT EXISTS idx_task_notes_task_id ON task_notes(task_id)')
+
+export function getTasks(archived = false) {
+  const tasks = db.prepare('SELECT * FROM tasks WHERE archived = ? ORDER BY created_at DESC, id DESC').all(archived ? 1 : 0)
   const notes = db.prepare('SELECT * FROM task_notes ORDER BY created_at, id').all()
   const byTask = new Map()
   for (const n of notes) {
@@ -65,19 +102,26 @@ export function insertTask({ title, category, assignee, sprint }) {
 export function updateTask(id, fields) {
   const columns = Object.keys(fields)
   if (columns.length === 0) return getTask(id)
-  const setClause = columns.map((c) => `${c} = ?`).join(', ')
+  let setClause = columns.map((c) => `${c} = ?`).join(', ') + ', updated_at = CURRENT_TIMESTAMP'
+  if (columns.includes('is_completed')) {
+    setClause += fields.is_completed ? ', completed_at = CURRENT_TIMESTAMP' : ', completed_at = NULL'
+  }
   db.prepare(`UPDATE tasks SET ${setClause} WHERE id = ?`).run(...columns.map((c) => fields[c]), id)
   return getTask(id)
 }
 
-export const deleteTask = db.transaction((id) => {
-  db.prepare('DELETE FROM task_notes WHERE task_id = ?').run(id)
+// Notes go with the task via ON DELETE CASCADE.
+export function deleteTask(id) {
   return db.prepare('DELETE FROM tasks WHERE id = ?').run(id).changes > 0
-})
+}
 
-export function insertTaskNote(taskId, content) {
+export function archiveCompleted() {
+  return db.prepare('UPDATE tasks SET archived = 1, updated_at = CURRENT_TIMESTAMP WHERE is_completed = 1 AND archived = 0').run().changes
+}
+
+export function insertTaskNote(taskId, { content, category, assignee }) {
   if (!db.prepare('SELECT 1 FROM tasks WHERE id = ?').get(taskId)) return undefined
-  db.prepare('INSERT INTO task_notes (task_id, content) VALUES (?, ?)').run(taskId, content)
+  db.prepare('INSERT INTO task_notes (task_id, content, category, assignee) VALUES (?, ?, ?, ?)').run(taskId, content, category ?? null, assignee ?? null)
   return getTask(taskId)
 }
 
@@ -94,6 +138,29 @@ export function updateTaskNote(taskId, noteId, fields) {
 export function deleteTaskNote(taskId, noteId) {
   const deleted = db.prepare('DELETE FROM task_notes WHERE id = ? AND task_id = ?').run(noteId, taskId).changes > 0
   return deleted ? getTask(taskId) : undefined
+}
+
+export function getNoteDates() {
+  return db.prepare('SELECT date FROM daily_notes ORDER BY date DESC').all().map((r) => r.date)
+}
+
+// Full backup: every task (archived included, with notes) + every daily note.
+export function exportAll() {
+  const tasks = db.prepare('SELECT * FROM tasks ORDER BY id').all()
+  const notes = db.prepare('SELECT * FROM task_notes ORDER BY task_id, created_at, id').all()
+  const byTask = new Map()
+  for (const n of notes) {
+    if (!byTask.has(n.task_id)) byTask.set(n.task_id, [])
+    byTask.get(n.task_id).push(n)
+  }
+  return {
+    tasks: tasks.map((t) => ({ ...t, notes: byTask.get(t.id) ?? [] })),
+    daily_notes: db.prepare('SELECT * FROM daily_notes ORDER BY date').all(),
+  }
+}
+
+export function getCompletedOn(date) {
+  return db.prepare("SELECT * FROM tasks WHERE date(completed_at) = ? ORDER BY completed_at").all(date)
 }
 
 export function getNote(date) {

@@ -57,7 +57,12 @@ Digita `>` nella smart bar per cercare un task esistente (frecce + Invio per sel
 
 - `/` — focus sulla smart bar
 - `↑` `↓` (o `j`/`k`) — naviga il feed
+- `⇧↑` `⇧↓` — sposta il task dentro lo sprint
 - `Invio` / `Spazio` — segna fatto/da fare
 - `⌫` / `x` — elimina il task selezionato
-- `e` — modifica il titolo
+- `e` — modifica titolo e tag (`[categoria] titolo @assignee #sprint`)
+- `Z` — annulla (prima i delete in sospeso, poi l'ultima modifica)
+- `v` — cambia vista (verticale/orizzontale)
+- `n` — apre/chiude gli appunti del daily
+- `?` — cheat-sheet delle scorciatoie
 - `Tab` — completa i suggerimenti `@assignee` / `[categoria]`
