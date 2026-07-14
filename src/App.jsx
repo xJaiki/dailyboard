@@ -24,6 +24,7 @@ function App() {
   const [showHelp, setShowHelp] = useState(false)
   const [liveMessage, setLiveMessage] = useState('')
   const [horizontal, setHorizontal] = useState(() => localStorage.getItem('view') === 'horizontal')
+  const [dark, setDark] = useState(() => document.documentElement.dataset.theme === 'dark')
   const [query, setQuery] = useState('')
   const [hideDone, setHideDone] = useState(() => localStorage.getItem('hideDone') === '1')
   const [lastEdit, setLastEdit] = useState(null) // { undo } — one slot, Z restores the last title/note edit
@@ -47,6 +48,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem('view', horizontal ? 'horizontal' : 'vertical')
   }, [horizontal])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+    localStorage.setItem('theme', dark ? 'dark' : 'light')
+  }, [dark])
 
   useEffect(() => {
     localStorage.setItem('sprintOrder', JSON.stringify(sprintOrder))
@@ -516,6 +522,11 @@ function App() {
         <div className="view-toggle">
           <button type="button" aria-pressed={hideDone} onClick={() => setHideDone((v) => !v)}>
             Nascondi fatti
+          </button>
+        </div>
+        <div className="view-toggle">
+          <button type="button" aria-pressed={dark} aria-label={dark ? 'Passa al tema chiaro' : 'Passa al tema scuro'} onClick={() => setDark((d) => !d)}>
+            {dark ? '☀️' : '🌙'}
           </button>
         </div>
         <input
