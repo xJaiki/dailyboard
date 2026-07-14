@@ -1,0 +1,8 @@
+node_modules
+dailyboard.db
+dist
+graphify-out
+docs
+.impeccable
+context.md
+product.md
