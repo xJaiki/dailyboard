@@ -133,6 +133,7 @@ export default function SmartBar({ tasks, onTaskSaved, onError, inputRef }) {
         aria-label={target ? `Nota per ${target.title}` : 'Nuovo task'}
         autoFocus
       />
+      {!value && !target && <kbd className="bar-hint" aria-hidden="true">/</kbd>}
       {previewChips.length > 0 && (
         <div className="parse-preview" aria-hidden="true">
           {previewChips.map(([label, val]) => (

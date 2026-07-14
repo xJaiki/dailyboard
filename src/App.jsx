@@ -416,7 +416,9 @@ function App() {
     function onKeyDown(e) {
       const el = document.activeElement
       const tag = el?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'BUTTON' || el?.isContentEditable) return
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return
+      // A focused button keeps Enter/Space for itself; every other shortcut stays live.
+      if (tag === 'BUTTON' && (e.key === 'Enter' || e.key === ' ')) return
       if (e.key === '/') {
         e.preventDefault()
         barRef.current?.focus()
@@ -506,7 +508,19 @@ function App() {
           </button>
         </div>
       )}
-      <h1>DailyBoard</h1>
+      <header className="app-header">
+        <h1>
+          <span className="app-mark" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+          DailyBoard
+        </h1>
+        <span className="app-date">
+          {new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+        </span>
+      </header>
       <SmartBar tasks={tasks ?? []} onTaskSaved={upsert} onError={() => showError('Non salvato — riprova')} inputRef={barRef} />
       <DailyNotes onError={() => showError('Appunti non salvati — riprova')} />
 
@@ -579,9 +593,22 @@ function App() {
       )}
 
       {tasks === null ? (
-        <p className="hint">Caricamento…</p>
+        <div className="skeleton-feed" aria-hidden="true">
+          <div className="skeleton-card" />
+          <div className="skeleton-card" />
+          <div className="skeleton-card" />
+        </div>
       ) : tasks.length === 0 ? (
-        <p className="hint">Nessun task — scrivi nella barra e premi Invio.</p>
+        <div className="empty-state">
+          <p className="empty-title">Cattura il primo task</p>
+          <p className="empty-example">
+            <span className="parse-chip">[FE]</span> Sistemare la label del filtro <span className="parse-chip">@mario</span>{' '}
+            <span className="parse-chip">#sprint-1</span>
+          </p>
+          <p className="hint">
+            Scrivi nella barra e premi Invio — <kbd>[categoria]</kbd>, <kbd>@assignee</kbd> e <kbd>#sprint</kbd> diventano tag.
+          </p>
+        </div>
       ) : visibleTasks.length === 0 ? (
         <p className="hint">Nessun risultato con i filtri attivi.</p>
       ) : horizontal ? (

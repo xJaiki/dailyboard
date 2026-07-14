@@ -1,11 +1,13 @@
 :root {
-  --bg: #fafaf9;
+  --bg: #f7f6f3;
   --surface: #ffffff;
   --ink: #1c1917;
-  --muted: #78716c;
+  --muted: #6f6a64;
   --muted-strong: #57534e;
-  --faint: #e7e5e4;
+  --faint: #eae8e4;
+  --line: rgba(28, 25, 23, 0.08);
   --accent: #4f46e5;
+  --accent-ink: #4338ca;
   --accent-soft: #eef2ff;
   --success: #15803d;
   --success-soft: #dcfce7;
@@ -13,9 +15,10 @@
   --danger-soft: #fecaca;
   --danger-ink: #7f1d1d;
   --notes-bg: #fff8e1;
-  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 2px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.14);
+  --shadow-sm: 0 1px 2px rgba(28, 25, 23, 0.05), 0 2px 8px rgba(28, 25, 23, 0.05);
+  --shadow-md: 0 2px 4px rgba(28, 25, 23, 0.05), 0 6px 16px rgba(28, 25, 23, 0.08);
+  --shadow-lg: 0 4px 8px rgba(28, 25, 23, 0.08), 0 12px 32px rgba(28, 25, 23, 0.16);
+  --radius-card: 16px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   /* z-scale: sticky < dropdown < banner < toast */
   --z-sticky: 5;
@@ -26,13 +29,15 @@
 
 /* Theme is stamped on <html data-theme> by index.html (system pref) and the toolbar switch (manual override). */
 :root[data-theme='dark'] {
-  --bg: #1c1917;
-  --surface: #292524;
-  --ink: #fafaf9;
+  --bg: #191614;
+  --surface: #262220;
+  --ink: #f5f4f2;
   --muted: #a8a29e;
   --muted-strong: #d6d3d1;
-  --faint: #44403c;
+  --faint: #3d3835;
+  --line: rgba(245, 244, 242, 0.09);
   --accent: #818cf8;
+  --accent-ink: #a5b0fc;
   --accent-soft: #312e81;
   --success: #4ade80;
   --success-soft: #14532d;
@@ -51,20 +56,67 @@
 }
 
 body {
-  font-family: system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--ink);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
 .app {
   max-width: 760px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 28px 24px 24px;
 }
 
-h1 {
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.app-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 1.25rem;
   font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+/* The mark: three dots in the category pop colors — the palette IS the logo. */
+.app-mark {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.app-mark i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.app-mark i:nth-child(1) {
+  background: #c084fc;
+}
+
+.app-mark i:nth-child(2) {
+  background: #fde047;
+}
+
+.app-mark i:nth-child(3) {
+  background: #5eead4;
+}
+
+.app-date {
+  margin-left: auto;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .visually-hidden {
@@ -109,19 +161,37 @@ h1 {
 
 .smart-bar input {
   width: 100%;
-  padding: 14px 18px;
-  font-size: 1.1rem;
-  border: none;
+  padding: 15px 52px 15px 20px;
+  font-size: 1.05rem;
+  border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
   color: var(--ink);
   box-shadow: var(--shadow-md);
   outline: none;
-  transition: box-shadow 150ms var(--ease-out);
+  transition: box-shadow 180ms var(--ease-out), border-color 180ms var(--ease-out);
+}
+
+.smart-bar input:hover {
+  border-color: rgba(79, 70, 229, 0.3);
 }
 
 .smart-bar input:focus {
-  box-shadow: var(--shadow-md), 0 0 0 3px var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md), 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.bar-hint {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  translate: 0 -50%;
+  pointer-events: none;
+  color: var(--muted);
+}
+
+.smart-bar input:focus ~ .bar-hint {
+  opacity: 0;
 }
 
 .smart-bar input::placeholder,
@@ -149,13 +219,15 @@ h1 {
   position: absolute;
   left: 12px;
   right: 12px;
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   padding: 6px;
   list-style: none;
   background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 14px;
   box-shadow: var(--shadow-lg);
   z-index: var(--z-dropdown);
+  animation: popIn 0.15s var(--ease-out);
 }
 
 .suggestions li {
@@ -221,7 +293,8 @@ h1 {
   padding: 14px;
   border-radius: 18px;
   background: var(--surface);
-  box-shadow: var(--shadow-md);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
   animation: popIn 0.2s var(--ease-out);
 }
 
@@ -258,7 +331,6 @@ h1 {
 /* Segmented control: two buttons, the pressed one is the active view. */
 .view-toggle {
   display: inline-flex;
-  margin-top: 10px;
   padding: 3px;
   gap: 3px;
   border-radius: 999px;
@@ -379,28 +451,40 @@ h1 {
 
 .task-card {
   background: var(--surface);
-  border-radius: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
   padding: 14px 16px;
   margin-block: 10px;
   box-shadow: var(--shadow-sm);
   animation: popIn 0.25s var(--ease-out);
-  transition: box-shadow 150ms var(--ease-out), opacity 150ms var(--ease-out);
+  transition: box-shadow 180ms var(--ease-out), border-color 180ms var(--ease-out), opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
 }
 
 .task-card:hover {
   box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
 }
 
 .task-card.selected {
-  outline: 3px solid var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm), 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .task-card.done {
-  opacity: 0.55;
+  opacity: 0.6;
+  background: color-mix(in srgb, var(--surface) 60%, var(--bg));
+  box-shadow: none;
+}
+
+.task-card.done:hover {
+  transform: none;
+  opacity: 0.85;
 }
 
 .task-card.done .title {
   text-decoration: line-through;
+  text-decoration-color: var(--muted);
+  color: var(--muted-strong);
 }
 
 .task-row {
@@ -438,7 +522,7 @@ h1 {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: 2px solid var(--faint);
+  border: 2px solid color-mix(in srgb, var(--muted) 45%, transparent);
   background: var(--surface);
   cursor: pointer;
   font-weight: 800;
@@ -446,16 +530,34 @@ h1 {
   flex-shrink: 0;
   margin-top: 2px;
   padding: 0;
-  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out);
+  transition: border-color 150ms var(--ease-out), background 150ms var(--ease-out), transform 150ms var(--ease-out);
 }
 
 .check:hover {
   border-color: var(--success);
+  transform: scale(1.08);
+}
+
+.check:active {
+  transform: scale(0.92);
 }
 
 .task-card.done .check {
   border-color: var(--success);
   background: var(--success-soft);
+  animation: checkPop 0.25s var(--ease-out);
+}
+
+@keyframes checkPop {
+  0% {
+    transform: scale(0.8);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Delete is hover-revealed by design: visible on row hover, card selection,
@@ -539,9 +641,9 @@ h1 {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 2px;
-  margin-top: 22px;
-  background: var(--bg);
+  padding: 12px 2px 8px;
+  margin-top: 26px;
+  background: linear-gradient(to bottom, var(--bg) 82%, transparent);
 }
 
 .sprint-divider:first-child {
@@ -667,6 +769,45 @@ h1 {
   text-align: center;
 }
 
+.skeleton-feed {
+  margin-top: 26px;
+}
+
+.skeleton-card {
+  height: 64px;
+  border-radius: var(--radius-card);
+  margin-block: 10px;
+  background: linear-gradient(100deg, var(--faint) 40%, color-mix(in srgb, var(--faint) 45%, var(--surface)) 50%, var(--faint) 60%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -80% 0;
+  }
+}
+
+.empty-state {
+  margin-top: 48px;
+  text-align: center;
+}
+
+.empty-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 14px;
+}
+
+.empty-example {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: var(--muted-strong);
+}
+
 .kbd-hints {
   color: var(--muted-strong);
 }
@@ -684,6 +825,7 @@ kbd {
   bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
+  animation: toastUp 0.25s var(--ease-out);
   display: flex;
   align-items: center;
   gap: 14px;
@@ -741,25 +883,28 @@ kbd {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 14px;
 }
 
 .search-input {
   flex: 1;
   min-width: 140px;
-  border: none;
+  border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 7px 14px;
   font: inherit;
   font-size: 0.85rem;
   background: var(--surface);
+  color: var(--ink);
   box-shadow: var(--shadow-sm);
   outline: none;
+  transition: border-color 150ms var(--ease-out), box-shadow 150ms var(--ease-out);
 }
 
 .search-input:focus {
-  box-shadow: var(--shadow-sm), 0 0 0 2px var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm), 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
 .sprint-actions {
@@ -796,10 +941,20 @@ kbd {
   margin-bottom: 0;
 }
 
+/* Empty progress is noise: zones appear only with real progress, or on hover/selection to invite the first click. */
 .progress {
   display: flex;
   gap: 3px;
   max-width: 180px;
+  opacity: 0;
+  transition: opacity 150ms var(--ease-out);
+}
+
+.progress.has-progress,
+.task-card:hover .progress,
+.task-card.selected .progress,
+.progress:focus-within {
+  opacity: 1;
 }
 
 .progress-zone {
@@ -966,6 +1121,7 @@ kbd {
 
 .help-card {
   background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: 18px;
   padding: 20px 24px;
   box-shadow: var(--shadow-lg);
@@ -1009,10 +1165,25 @@ kbd {
   }
 }
 
+@keyframes toastUp {
+  from {
+    transform: translateX(-50%) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+
+  .skeleton-card {
+    animation: none;
   }
 }
 

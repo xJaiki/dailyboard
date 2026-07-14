@@ -86,7 +86,11 @@ export default function TaskCard({ task, selected, editing, cardRef, onStartEdit
             </span>
           )}
           {!task.is_completed && (
-            <div className="progress" role="group" aria-label={`Avanzamento: ${task.progress_percent ?? 0}%`}>
+            <div
+              className={`progress${(task.progress_percent ?? 0) > 0 ? ' has-progress' : ''}`}
+              role="group"
+              aria-label={`Avanzamento: ${task.progress_percent ?? 0}%`}
+            >
               {[25, 50, 75, 100].map((p) => (
                 <button
                   key={p}
