@@ -2,7 +2,7 @@
 
 Micro-gestionale "zero-form" per i daily tecnici di un team.
 
-## Avvio
+## Avvio (sviluppo)
 
 ```
 npm install
@@ -11,6 +11,26 @@ npm run start
 
 - Frontend (Vite): http://localhost:5173
 - Backend (Express + SQLite): http://localhost:3001
+
+## Avvio con Docker (produzione)
+
+Un'unica immagine con client buildato, server e DB — non serve portarsi dietro il codice sorgente.
+
+```
+docker build -t dailyboard .
+docker run -d -p 3001:3001 -v dailyboard-data:/data --name dailyboard dailyboard
+```
+
+Apri http://localhost:3001. Il DB SQLite vive nel volume `dailyboard-data`, quindi sopravvive a `docker rm`/rebuild dell'immagine.
+
+Comandi utili:
+
+```
+docker stop dailyboard      # ferma
+docker start dailyboard     # riavvia
+docker logs -f dailyboard   # log
+docker rm -f dailyboard && docker volume rm dailyboard-data   # reset completo (cancella anche i dati)
+```
 
 ## Smart Bar
 
